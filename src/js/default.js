@@ -1,4 +1,5 @@
 // HTML
+
 let HTMLboard = document.getElementById("board"),
     restartButton = document.getElementById("NewGame");
 
@@ -9,22 +10,29 @@ let size = 10, // size will equal what size the grid will be. Maybe changeable.
 
 // Creating a grid with each cell having data attributes and unique ids for easier calling
 // and manipulation throughout the rest of the game. 
+let bombs;
+
 
 
 function boardGeneration(x) {
-
+    let count = 0;
     for (var i = 0; i < x; i++) {
-        //board.push([]); 
+        board.push([]);
         for (var j = 0; j < x; j++) {
             let div = document.createElement("div");
+            div.setAttribute("location", count);
             div.setAttribute("data-ismine", false);
             div.setAttribute("data-revealed", false);
             div.setAttribute("data-clickable", true);
             div.setAttribute("data-flag", false);
-            div.setAttribute("data-question", false);
+            div.setAttribute("lost", false);
             div.setAttribute("data-touching", 0);
-            HTMLboard.appendChild(div).id = i + "" + j;
-            // board[i].push([div]);
+            div.addEventListener("click", clickSquare);
+            div.addEventListener("contextmenu", toggleFlag);
+            HTMLboard.appendChild(div).id = i + "_" + j;
+            // HTMLboard.appendChild(div).id = count;
+            count++;
+            board[i].push([div]);
         }
     }
 }
@@ -35,7 +43,7 @@ boardGeneration(size);
 
 // Random generation of mine placement upon load and upon game reset.
 function mineGeneration () {
-    let bombs = new Array(size * size).fill(0); // create an array with same amount of cells
+    bombs = new Array(size * size).fill(0); // create an array with same amount of cells
     bombs = bombs.map((a, index) => {
         return a = index;
     });
@@ -52,7 +60,6 @@ function mineGeneration () {
     bombs.map((a) => {
         HTMLboard.children[a].setAttribute("data-ismine", true);
     });
-    console.log(bombs);
     return bombs;
 }
 
@@ -99,71 +106,85 @@ function numGen(bombs) {
 numGen(mineGeneration());
 
 
-HTMLboard.addEventListener("click", reveal, true);
-
-HTMLboard.addEventListener("contextmenu", function(e) {
-    let flag = (e.target.getAttribute("data-flag") == "false") ? true : false,
-        clickable = (e.target.getAttribute("data-clickable") == "true") ? false : true;
-
-    e.preventDefault();
-
-    e.target.setAttribute("data-flag", flag);
-    e.target.setAttribute("data-clickable", clickable);
-
-});
-
-function reveal(e) {
-
-    // check if e.target is a thing first click or not
-    if (e.target === undefined) {
-        e = e;
+function clickSquare(evt) {
+    //check for bomb
+    //open up appropriate squares
+    if (evt.target.getAttribute("data-ismine") === 'true') {
+        gameLost();
     } else {
-        e = e.target;
-    }
-    console.log(e);
-    let clickable = Boolean(e.getAttribute("data-clickable") === "true"),
-        bomb = Boolean(e.getAttribute("data-ismine") === "true"),
-        touch = Boolean(parseInt(e.getAttribute("data-touching")) > 0);
-    // if the cell is clickable
-    if (clickable) {
-        // inside if
-        if (bomb) {
-            e.setAttribute("data-clickable", false);
-            return terminate();
-        } else if (touch) {
-            e.innerHTML = "<p>" + e.getAttribute("data-touching") + "</p>";
-            e.setAttribute("data-clickable", false);
-            e.setAttribute("data-revealed", true);
-        } else {
-            e.setAttribute("data-revealed", true);
-            e.setAttribute("data-clickable", false);
-            let area;
-            let a = parseInt(e.id);
-            if ((a + 1) % size === 0) {
-                area = [a - 1, a + size, a - size, a + size - 1, a - size - 1];
-            } else if (a % size === 0) {
-                area = [a + 1, a + size, a - size, a + size + 1, a - size + 1];
-            } else {
-                area = [a + 1, a - 1, a + size, a - size, a + size - 1, a - size - 1, a + size + 1, a - size + 1];
-            }
-            console.log(area);
-            area.map(function(a) {
-                if ((a < (size * size) && a >= 0)) {
-                    reveal(HTMLboard.children[a]);
-                }
+        reveal(parseInt(evt.target.getAttribute("location")));
+    };
+}
 
-            });
-        }
-        //end inner if else
+function toggleFlag(evt) {
+    if (evt.target.getAttribute("data-flag") === 'true') {
+        evt.target.setAttribute("data-flag", false);
+        evt.target.addEventListener("click", clickSquare);
+    } else {
+        evt.target.setAttribute("data-flag", true);
+        evt.target.removeEventListener("click", clickSquare);
+    };
+
+}
+
+function lookup(a) { //find the 8 surrounding tiles
+    size = parseInt(size);
+    console.log("looking up: " + a + '  size = ' + size);
+    let gridLookup = [a + 1, a + size + 1, a - size + 1,
+        a + size, a - size,
+        a - 1, a + size - 1, a - size - 1
+    ];
+    if ((a + 1) % size === 0) {
+        gridLookup = gridLookup.slice(3); //[a - 1, a + size, a - size, a + size - 1, a - size - 1];
+    } else if (a % size === 0) {
+        gridLookup = gridLookup.slice(0, 5); //[a + 1, a + size, a - size, a + size + 1, a - size + 1];
+    } else {
+        gridLookup = gridLookup; //[a + 1, a - 1, a + size, a - size, a + size - 1, a - size - 1, a + size + 1, a - size + 1];
+    };
+    return gridLookup;
+}
+
+function reveal(square) {
+    square = parseInt(square);
+    HTMLboard.children[square].setAttribute("data-revealed", true)
+    if (HTMLboard.children[square].getAttribute("data-touching") !== '0') {
+        HTMLboard.children[square].innerHTML = "<p>" + HTMLboard.children[square].getAttribute("data-touching") + "</p>";
+        HTMLboard.children[square].removeEventListener("click", clickSquare);
+        HTMLboard.children[square].removeEventListener("contextmenu", toggleFlag);
+    } else {
+        HTMLboard.children[square].removeEventListener("contextmenu", toggleFlag);
     }
+    if (HTMLboard.children[square].getAttribute("data-touching") === '0') {
+        let neighbors = lookup(square);
+        neighbors.map(function(a) {
+            if ((a < (size * size) && a >= 0) &&
+                HTMLboard.children[a].getAttribute("data-revealed") === 'false') {
+                reveal(a);
+            };
+        });
+    };
+
 
 
 }
 
-function terminate() {
-    console.log("died");
+function gameLost() {
+    bombs.map(a => {
+        HTMLboard.children[a].setAttribute("lost", true);
+    });
+    for (var i = 0; i< (size^2); i ++) {
+        HTMLboard.children[i].removeEventListener("click", clickSquare);
+        HTMLboard.children[i].removeEventListener("contextmenu", toggleFlag);
+    }
+    //show all the bombs
+    //show game lost message
+    //ask for new game
 }
 
+function gameWon() {
+    //show winning message and time.
+    //ask for new game
+}
 
 let min    = 0,
     zeroPlaceholder = 0,
@@ -194,4 +215,5 @@ function StartGame(){
 };
 
 StartGame();
+
 

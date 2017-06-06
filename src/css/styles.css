@@ -12,6 +12,7 @@ html {
   color: white; }
 
 #board div {
+
   background: #7d7d7d;
   display: inline-block;
   width: 8%;
@@ -36,13 +37,28 @@ p {
   background: #3a8c60; }
 
 #board div[data-flag=true] {
-  background: #ea8591; }
+  background-image: url('../img/flag.svg');
+  /*background-color: gray; */
+}
 
-/* is bomb style */
-/*#board div[data-ismine=true] {
-    background: #9a2d2d;
+#board div[data-flag=false] {
+  /*background-image: url('../img/flag.svg');*/
+  background: darkgray; 
+}
+
+/*#board div[data-revealed=true] {
+  background-color: gray;
+  color: #fff;
+  text-align: middle middle;
+  font-size: 18px;
 }*/
-#board div[data-touching] {
+#board div[lost=true] {
+  background-color: red;
+  background-image: url('../img/bomb.svg');
+}
+
+
+#board div[data-touching="1"] {
   color: blue; }
 
 #board div[data-touching="2"] {
@@ -58,8 +74,8 @@ p {
   color: maroon; }
 
 #board div[data-revealed="true"] {
+  text-align: center center;
   border: 4px inset #dedede;
-  border-style: inset;
   background: #cecccc; }
 
 /*# sourceMappingURL=styles.css.map */
